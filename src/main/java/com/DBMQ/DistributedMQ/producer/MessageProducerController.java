@@ -1,4 +1,5 @@
 package com.DBMQ.DistributedMQ.producer;
+import com.DBMQ.DistributedMQ.constants.StreamConstants;
 import com.DBMQ.DistributedMQ.model.orderEvent;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.connection.stream.MapRecord;
@@ -18,7 +19,7 @@ public class MessageProducerController {
     @Autowired
     private RedisTemplate<String,Object> redisTemplate;
 
-    private static final String TOPIC = "order.placed";
+    private static final String TOPIC = StreamConstants.ORDER_PLACED;
 
     @PostMapping("/publish")
     public String publish(@RequestBody orderEvent event){
