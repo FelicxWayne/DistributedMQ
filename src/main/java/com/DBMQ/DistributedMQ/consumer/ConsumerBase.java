@@ -34,12 +34,12 @@ public abstract class ConsumerBase implements StreamListener<String, MapRecord<S
             log.info("Acknowledged message {} for group {}", record.getId(), consumerGroupName);
         } catch (Exception e) {
             log.error("Failed to process message {} in group {}: {}", record.getId(), consumerGroupName, e.getMessage(), e);
-            // DO NOT acknowledge. The message remains in the PEL (Pending Entry List)
+            // it is NOT acknowledging the message so that the message remains in the PEL
             // The redelivery scheduler will claim and retry it.
         }
     }
 
-    private orderEvent deserialize(MapRecord<String, Object, Object> record) {
+    private OrderEvent deserialize(MapRecord<String, Object, Object> record) {
         Object orderIdObj = record.getValue().get("orderId");
         Object userIdObj = record.getValue().get("userId");
         Object amountObj = record.getValue().get("amount");
@@ -54,7 +54,7 @@ public abstract class ConsumerBase implements StreamListener<String, MapRecord<S
                 log.warn("Invalid amount field in record: {}", amountObj);
             }
         }
-        return new orderEvent(orderId, userId, amount);
+        return new OrderEvent(orderId, userId, amount);
     }
 
     protected abstract void process(orderEvent event, RecordId recordId) throws Exception;

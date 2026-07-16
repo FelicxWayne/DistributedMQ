@@ -1,13 +1,13 @@
 package com.DBMQ.DistributedMQ.model;
 
-public class orderEvent {
+public class OrderEvent {
     private String orderId;
     private String userId;
     private double amount;
 
-    public orderEvent(){}
+    public OrderEvent(){}
 
-    public orderEvent(String orderId,String userId,double amount){
+    public OrderEvent(String orderId,String userId,double amount){
         this.orderId = orderId;
         this.userId = userId;
         this.amount = amount;
