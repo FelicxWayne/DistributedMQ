@@ -1,7 +1,7 @@
 package com.DBMQ.DistributedMQ.consumer;
 
 import com.DBMQ.DistributedMQ.constants.StreamConstants;
-import com.DBMQ.DistributedMQ.model.orderEvent;
+import com.DBMQ.DistributedMQ.model.OrderEvent;
 import com.DBMQ.DistributedMQ.service.AckService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,7 +18,7 @@ public class EmailConsumer extends ConsumerBase {
     }
 
     @Override
-    protected void process(orderEvent event, RecordId recordId) throws Exception {
+    protected void process(OrderEvent event, RecordId recordId) throws Exception {
         log.info("[EmailConsumer] Processing email notification for order: {} (userId: {})", 
                  event.getOrderId(), event.getUserId());
     }

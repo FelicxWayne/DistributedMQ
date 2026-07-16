@@ -1,6 +1,6 @@
 package com.DBMQ.DistributedMQ.consumer;
 
-import com.DBMQ.DistributedMQ.model.orderEvent;
+import com.DBMQ.DistributedMQ.model.OrderEvent;
 import com.DBMQ.DistributedMQ.service.AckService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -26,7 +26,7 @@ public abstract class ConsumerBase implements StreamListener<String, MapRecord<S
     public void onMessage(MapRecord<String, Object, Object> record) {
         try {
             log.info("Received message in group {}: {}", consumerGroupName, record.getId());
-            orderEvent event = deserialize(record);
+            OrderEvent event = deserialize(record);
             process(event, record.getId());
             
             // Acknowledge the message upon successful processing
@@ -57,7 +57,7 @@ public abstract class ConsumerBase implements StreamListener<String, MapRecord<S
         return new OrderEvent(orderId, userId, amount);
     }
 
-    protected abstract void process(orderEvent event, RecordId recordId) throws Exception;
+    protected abstract void process(OrderEvent event, RecordId recordId) throws Exception;
 
     public String getStreamName() {
         return streamName;
