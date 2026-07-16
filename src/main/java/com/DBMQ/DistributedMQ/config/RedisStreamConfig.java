@@ -19,7 +19,6 @@ import org.springframework.data.redis.stream.StreamMessageListenerContainer.Stre
 
 import jakarta.annotation.PreDestroy;
 import java.time.Duration;
-import java.util.UUID;
 
 @Configuration
 public class RedisStreamConfig implements ApplicationListener<ApplicationReadyEvent> {
@@ -60,21 +59,21 @@ public class RedisStreamConfig implements ApplicationListener<ApplicationReadyEv
 
         // Register EmailConsumer
         container.receive(
-                Consumer.from(StreamConstants.EMAIL_GROUP, "email-consumer-" + UUID.randomUUID().toString().substring(0, 8)),
+                Consumer.from(StreamConstants.EMAIL_GROUP, "email-consumer-1"),
                 StreamOffset.create(streamKey, ReadOffset.lastConsumed()),
                 emailConsumer
         );
 
         // Register InventoryConsumer
         container.receive(
-                Consumer.from(StreamConstants.INVENTORY_GROUP, "inventory-consumer-" + UUID.randomUUID().toString().substring(0, 8)),
+                Consumer.from(StreamConstants.INVENTORY_GROUP, "inventory-consumer-1"),
                 StreamOffset.create(streamKey, ReadOffset.lastConsumed()),
                 inventoryConsumer
         );
 
         // Register PaymentConsumer
         container.receive(
-                Consumer.from(StreamConstants.PAYMENT_GROUP, "payment-consumer-" + UUID.randomUUID().toString().substring(0, 8)),
+                Consumer.from(StreamConstants.PAYMENT_GROUP, "payment-consumer-1"),
                 StreamOffset.create(streamKey, ReadOffset.lastConsumed()),
                 paymentConsumer
         );
