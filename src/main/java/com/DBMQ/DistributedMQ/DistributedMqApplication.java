@@ -3,6 +3,7 @@ package com.DBMQ.DistributedMQ;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
+@EnableScheduling
 @SpringBootApplication
 public class DistributedMqApplication {
 
