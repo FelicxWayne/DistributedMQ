@@ -7,10 +7,10 @@ services:
     container_name: distributedmq-postgres
     restart: unless-stopped
 
-    environment:
-      POSTGRES_DB: distributedmq
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: nahidwin
+   environment:
+    POSTGRES_DB: ${POSTGRES_DB}
+    POSTGRES_USER: ${POSTGRES_USER}
+    POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
 
     ports:
       - "5432:5432"
