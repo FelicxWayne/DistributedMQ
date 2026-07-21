@@ -45,16 +45,22 @@ public class ConsumerGroupInitializer implements ApplicationRunner {
 
             System.out.println("Created Consumer Group : " + groupName);
 
-        } catch (DataAccessException ex) {
+        }catch (Exception ex) {
 
-            if (ex.getMessage() != null &&
-                    ex.getMessage().contains("BUSYGROUP")) {
+            if (ex.getMessage() != null && ex.getMessage().contains("BUSYGROUP")) {
+                System.out.println("Consumer Group already exists : " + groupName);
+                return;
+            }
+
+            if (ex.getCause() != null &&
+                    ex.getCause().getMessage() != null &&
+                    ex.getCause().getMessage().contains("BUSYGROUP")) {
 
                 System.out.println("Consumer Group already exists : " + groupName);
-
-            } else {
-                throw ex;
+                return;
             }
+
+            throw ex;
         }
     }
 }
