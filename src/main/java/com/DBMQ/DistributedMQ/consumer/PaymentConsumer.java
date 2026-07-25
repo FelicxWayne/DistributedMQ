@@ -21,6 +21,9 @@ public class PaymentConsumer extends ConsumerBase {
     protected void process(OrderEvent event, RecordId recordId) throws Exception {
         log.info("[PaymentConsumer] Processing payment for order: {} (userId: {}, amount: {})", 
                  event.getOrderId(), event.getUserId(), event.getAmount());
+        if (event.getAmount() > 500.0) {
+            throw new IllegalArgumentException("Payment failed: amount exceeds maximum allowed limit (amount: " + event.getAmount() + ")");
+        }
     }
 }
 
