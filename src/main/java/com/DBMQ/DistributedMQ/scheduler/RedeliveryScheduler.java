@@ -4,6 +4,7 @@ import com.DBMQ.DistributedMQ.constants.StreamConstants;
 import com.DBMQ.DistributedMQ.service.PendingMessageService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.connection.stream.PendingMessage;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -21,12 +22,15 @@ public class RedeliveryScheduler {
 
     private final PendingMessageService pendingMessageService;
 
+    @Value("${mq.visibility-timeout-seconds:30}")
+    private long visibilityTimeoutSeconds;
+
     public RedeliveryScheduler(PendingMessageService pendingMessageService) {
         this.pendingMessageService = pendingMessageService;
     }
 
     /**
-     * Periodically queries and logs the Pending Entries List (PEL) for each consumer group.
+     * Periodically queries and checks the Pending Entries List (PEL) for each consumer group.
      * Scheduled to execute every 5 seconds.
      */
     @Scheduled(fixedDelay = 5000)
@@ -51,18 +55,27 @@ public class RedeliveryScheduler {
                 Duration idleTime = pending.getElapsedTimeSinceLastDelivery();
                 long deliveryCount = pending.getTimesDelivered();
 
+                long idleSeconds = idleTime != null ? idleTime.toSeconds() : 0;
+                boolean eligibleForRedelivery = idleSeconds >= visibilityTimeoutSeconds;
+
+                String status = eligibleForRedelivery
+                        ? String.format("Eligible for redelivery (idle time %ds >= visibility timeout %ds)", idleSeconds, visibilityTimeoutSeconds)
+                        : String.format("Still being processed (idle time %ds < visibility timeout %ds)", idleSeconds, visibilityTimeoutSeconds);
+
                 log.info("\n==============================\n" +
                                 "Consumer Group : {}\n" +
                                 "Message ID     : {}\n" +
                                 "Consumer       : {}\n" +
                                 "Idle Time      : {} sec\n" +
                                 "Deliveries     : {}\n" +
+                                "Status         : {}\n" +
                                 "==============================",
                         groupName,
                         messageId,
                         consumer,
-                        idleTime != null ? idleTime.toSeconds() : "unknown",
-                        deliveryCount
+                        idleSeconds,
+                        deliveryCount,
+                        status
                 );
             }
         } catch (Exception e) {
