@@ -1,10 +1,12 @@
 package com.DBMQ.DistributedMQ.scheduler;
 
 import com.DBMQ.DistributedMQ.constants.StreamConstants;
+import com.DBMQ.DistributedMQ.service.ClaimService;
 import com.DBMQ.DistributedMQ.service.PendingMessageService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.redis.connection.stream.MapRecord;
 import org.springframework.data.redis.connection.stream.PendingMessage;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -19,14 +21,17 @@ public class RedeliveryScheduler {
 
     private static final Logger log = LoggerFactory.getLogger(RedeliveryScheduler.class);
     private static final long MAX_PENDING_FETCH = 100;
+    private static final String RECOVERY_CONSUMER = "recovery-consumer";
 
     private final PendingMessageService pendingMessageService;
+    private final ClaimService claimService;
 
     @Value("${mq.visibility-timeout-seconds:30}")
     private long visibilityTimeoutSeconds;
 
-    public RedeliveryScheduler(PendingMessageService pendingMessageService) {
+    public RedeliveryScheduler(PendingMessageService pendingMessageService, ClaimService claimService) {
         this.pendingMessageService = pendingMessageService;
+        this.claimService = claimService;
     }
 
     /**
@@ -53,7 +58,7 @@ public class RedeliveryScheduler {
                 String messageId = pending.getIdAsString();
                 String consumer = pending.getConsumerName();
                 Duration idleTime = pending.getElapsedTimeSinceLastDelivery();
-                long deliveryCount = pending.getTimesDelivered();
+                long deliveryCount = pending.getTotalDeliveryCount();
 
                 long idleSeconds = idleTime != null ? idleTime.toSeconds() : 0;
                 boolean eligibleForRedelivery = idleSeconds >= visibilityTimeoutSeconds;
@@ -77,6 +82,24 @@ public class RedeliveryScheduler {
                         deliveryCount,
                         status
                 );
+
+                if (eligibleForRedelivery) {
+                    List<MapRecord<String, Object, Object>> claimedRecords = claimService.claimMessage(
+                            streamKey,
+                            groupName,
+                            RECOVERY_CONSUMER,
+                            messageId,
+                            Duration.ofSeconds(visibilityTimeoutSeconds)
+                    );
+                    if (claimedRecords != null && !claimedRecords.isEmpty()) {
+                        for (MapRecord<String, Object, Object> record : claimedRecords) {
+                            log.info("Successfully claimed message ID: {} for group: {} (assigned to consumer: {})",
+                                    record.getId(), groupName, RECOVERY_CONSUMER);
+                        }
+                    } else {
+                        log.warn("Failed to claim message ID: {} for group: {}", messageId, groupName);
+                    }
+                }
             }
         } catch (Exception e) {
             log.error("Failed to observe pending messages for group {}: {}", groupName, e.getMessage(), e);
