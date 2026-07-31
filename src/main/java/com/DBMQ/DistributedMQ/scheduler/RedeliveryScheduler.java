@@ -1,6 +1,7 @@
 package com.DBMQ.DistributedMQ.scheduler;
 
 import com.DBMQ.DistributedMQ.constants.StreamConstants;
+import com.DBMQ.DistributedMQ.consumer.RecoveryConsumer;
 import com.DBMQ.DistributedMQ.service.ClaimService;
 import com.DBMQ.DistributedMQ.service.PendingMessageService;
 import org.slf4j.Logger;
@@ -25,13 +26,17 @@ public class RedeliveryScheduler {
 
     private final PendingMessageService pendingMessageService;
     private final ClaimService claimService;
+    private final RecoveryConsumer recoveryConsumer;
 
     @Value("${mq.visibility-timeout-seconds:30}")
     private long visibilityTimeoutSeconds;
 
-    public RedeliveryScheduler(PendingMessageService pendingMessageService, ClaimService claimService) {
+    public RedeliveryScheduler(PendingMessageService pendingMessageService,
+                               ClaimService claimService,
+                               RecoveryConsumer recoveryConsumer) {
         this.pendingMessageService = pendingMessageService;
         this.claimService = claimService;
+        this.recoveryConsumer = recoveryConsumer;
     }
 
     /**
@@ -95,6 +100,7 @@ public class RedeliveryScheduler {
                         for (MapRecord<String, Object, Object> record : claimedRecords) {
                             log.info("Successfully claimed message ID: {} for group: {} (assigned to consumer: {})",
                                     record.getId(), groupName, RECOVERY_CONSUMER);
+                            recoveryConsumer.accept(groupName, record);
                         }
                     } else {
                         log.warn("Failed to claim message ID: {} for group: {}", messageId, groupName);
