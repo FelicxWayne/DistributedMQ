@@ -31,6 +31,9 @@ public class RedeliveryScheduler {
     @Value("${mq.visibility-timeout-seconds:30}")
     private long visibilityTimeoutSeconds;
 
+    @Value("${mq.max-delivery-attempts:5}")
+    private int maxDeliveryAttempts;
+
     public RedeliveryScheduler(PendingMessageService pendingMessageService,
                                ClaimService claimService,
                                RecoveryConsumer recoveryConsumer) {
@@ -89,21 +92,26 @@ public class RedeliveryScheduler {
                 );
 
                 if (eligibleForRedelivery) {
-                    List<MapRecord<String, Object, Object>> claimedRecords = claimService.claimMessage(
-                            streamKey,
-                            groupName,
-                            RECOVERY_CONSUMER,
-                            messageId,
-                            Duration.ofSeconds(visibilityTimeoutSeconds)
-                    );
-                    if (claimedRecords != null && !claimedRecords.isEmpty()) {
-                        for (MapRecord<String, Object, Object> record : claimedRecords) {
-                            log.info("Successfully claimed message ID: {} for group: {} (assigned to consumer: {})",
-                                    record.getId(), groupName, RECOVERY_CONSUMER);
-                            recoveryConsumer.accept(groupName, record);
-                        }
+                    if (deliveryCount >= maxDeliveryAttempts) {
+                        log.warn("Message ID: {} in group {} has exceeded retry limit (delivery count: {} >= max: {})",
+                                messageId, groupName, deliveryCount, maxDeliveryAttempts);
                     } else {
-                        log.warn("Failed to claim message ID: {} for group: {}", messageId, groupName);
+                        List<MapRecord<String, Object, Object>> claimedRecords = claimService.claimMessage(
+                                streamKey,
+                                groupName,
+                                RECOVERY_CONSUMER,
+                                messageId,
+                                Duration.ofSeconds(visibilityTimeoutSeconds)
+                        );
+                        if (claimedRecords != null && !claimedRecords.isEmpty()) {
+                            for (MapRecord<String, Object, Object> record : claimedRecords) {
+                                log.info("Successfully claimed message ID: {} for group: {} (assigned to consumer: {})",
+                                        record.getId(), groupName, RECOVERY_CONSUMER);
+                                recoveryConsumer.accept(groupName, record);
+                            }
+                        } else {
+                            log.warn("Failed to claim message ID: {} for group: {}", messageId, groupName);
+                        }
                     }
                 }
             }
