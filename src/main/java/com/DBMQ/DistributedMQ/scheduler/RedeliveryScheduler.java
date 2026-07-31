@@ -2,13 +2,16 @@ package com.DBMQ.DistributedMQ.scheduler;
 
 import com.DBMQ.DistributedMQ.constants.StreamConstants;
 import com.DBMQ.DistributedMQ.consumer.RecoveryConsumer;
+import com.DBMQ.DistributedMQ.service.AckService;
 import com.DBMQ.DistributedMQ.service.ClaimService;
+import com.DBMQ.DistributedMQ.service.DlqService;
 import com.DBMQ.DistributedMQ.service.PendingMessageService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.connection.stream.MapRecord;
 import org.springframework.data.redis.connection.stream.PendingMessage;
+import org.springframework.data.redis.connection.stream.RecordId;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
@@ -27,6 +30,8 @@ public class RedeliveryScheduler {
     private final PendingMessageService pendingMessageService;
     private final ClaimService claimService;
     private final RecoveryConsumer recoveryConsumer;
+    private final DlqService dlqService;
+    private final AckService ackService;
 
     @Value("${mq.visibility-timeout-seconds:30}")
     private long visibilityTimeoutSeconds;
@@ -36,10 +41,14 @@ public class RedeliveryScheduler {
 
     public RedeliveryScheduler(PendingMessageService pendingMessageService,
                                ClaimService claimService,
-                               RecoveryConsumer recoveryConsumer) {
+                               RecoveryConsumer recoveryConsumer,
+                               DlqService dlqService,
+                               AckService ackService) {
         this.pendingMessageService = pendingMessageService;
         this.claimService = claimService;
         this.recoveryConsumer = recoveryConsumer;
+        this.dlqService = dlqService;
+        this.ackService = ackService;
     }
 
     /**
@@ -93,8 +102,16 @@ public class RedeliveryScheduler {
 
                 if (eligibleForRedelivery) {
                     if (deliveryCount >= maxDeliveryAttempts) {
-                        log.warn("Message ID: {} in group {} has exceeded retry limit (delivery count: {} >= max: {})",
+                        log.warn("Message ID: {} in group {} has exceeded retry limit (delivery count: {} >= max: {}). Moving to DLQ.",
                                 messageId, groupName, deliveryCount, maxDeliveryAttempts);
+                        MapRecord<String, Object, Object> originalRecord = pendingMessageService.getMessageById(streamKey, messageId);
+                        if (originalRecord != null) {
+                            dlqService.publishToDlq(originalRecord, groupName, deliveryCount);
+                            ackService.acknowledge(streamKey, groupName, RecordId.of(messageId));
+                            log.info("Successfully moved message ID: {} in group {} to DLQ", messageId, groupName);
+                        } else {
+                            log.error("Could not find message payload for ID: {} in stream {}. Cannot move to DLQ.", messageId, streamKey);
+                        }
                     } else {
                         List<MapRecord<String, Object, Object>> claimedRecords = claimService.claimMessage(
                                 streamKey,
