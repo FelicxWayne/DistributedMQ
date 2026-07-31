@@ -1,6 +1,7 @@
 package com.DBMQ.DistributedMQ.service;
 
 import org.springframework.data.domain.Range;
+import org.springframework.data.redis.connection.stream.MapRecord;
 import org.springframework.data.redis.connection.stream.PendingMessage;
 import org.springframework.data.redis.connection.stream.PendingMessages;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -37,5 +38,23 @@ public class PendingMessageService {
             return pendingMessages.stream().toList();
         }
         return Collections.emptyList();
+    }
+
+    /**
+     * Retrieves a single message from the Redis Stream by its message ID.
+     *
+     * @param streamKey the Redis Stream key
+     * @param messageId the RecordId string
+     * @return the MapRecord representing the message, or null if not found
+     */
+    public MapRecord<String, Object, Object> getMessageById(String streamKey, String messageId) {
+        List<MapRecord<String, Object, Object>> records = redisTemplate.opsForStream().range(
+                streamKey,
+                Range.of(Range.Bound.inclusive(messageId), Range.Bound.inclusive(messageId))
+        );
+        if (records != null && !records.isEmpty()) {
+            return records.get(0);
+        }
+        return null;
     }
 }
