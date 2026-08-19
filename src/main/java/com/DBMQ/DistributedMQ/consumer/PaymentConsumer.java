@@ -22,7 +22,7 @@ public class PaymentConsumer extends ConsumerBase {
         log.info("[PaymentConsumer] Processing payment for order: {} (userId: {}, amount: {})", 
                  event.getOrderId(), event.getUserId(), event.getAmount());
         if (event.getAmount() > 500.0) {
-            throw new IllegalArgumentException("Payment failed: amount exceeds maximum allowed limit (amount: " + event.getAmount() + ")");
+            throw new RuntimeException("Simulated Payment failure - Order rejected");
         }
     }
 }

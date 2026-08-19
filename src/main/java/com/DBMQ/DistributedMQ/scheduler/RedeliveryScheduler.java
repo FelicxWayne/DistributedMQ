@@ -106,11 +106,20 @@ public class RedeliveryScheduler {
                                 messageId, groupName, deliveryCount, maxDeliveryAttempts);
                         MapRecord<String, Object, Object> originalRecord = pendingMessageService.getMessageById(streamKey, messageId);
                         if (originalRecord != null) {
-                            dlqService.publishToDlq(originalRecord, groupName, deliveryCount);
-                            ackService.acknowledge(streamKey, groupName, RecordId.of(messageId));
-                            log.info("Successfully moved message ID: {} in group {} to DLQ", messageId, groupName);
-                        } else {
-                            log.error("Could not find message payload for ID: {} in stream {}. Cannot move to DLQ.", messageId, streamKey);
+                            RecordId dlqRecord = dlqService.publishToDlq(originalRecord, groupName, deliveryCount);
+                            if (dlqRecord != null){
+                                ackService.acknowledge(streamKey, groupName, RecordId.of(messageId));
+
+                                log.info( "Successfully moved message ID: {} to DLQ with DLQ Record ID: {}",
+                                        messageId,
+                                        dlqRecord);
+                            }
+                            else{
+                                log.error("Failed to move message ID: {} to DLQ. Original message will remain pending",messageId);
+                            }
+                        } 
+                        else {
+                            log.error("Could not find message payload for ID: {}. Cannot move to DLQ.", messageId);
                         }
                     } else {
                         List<MapRecord<String, Object, Object>> claimedRecords = claimService.claimMessage(

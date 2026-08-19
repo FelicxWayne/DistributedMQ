@@ -29,10 +29,10 @@ public class DlqService {
      */
     public RecordId publishToDlq(MapRecord<String, Object, Object> originalRecord, String originalConsumerGroup, long deliveryCount) {
         Map<Object, Object> dlqPayload = new HashMap<>(originalRecord.getValue());
-        
+
         dlqPayload.put("originalMessageId", originalRecord.getId().getValue());
         dlqPayload.put("originalConsumerGroup", originalConsumerGroup);
-        dlqPayload.put("deliveryCount", String.valueOf(deliveryCount));
+        dlqPayload.put("deliveryCount", deliveryCount);
         dlqPayload.put("movedAt", Instant.now().toString());
 
         MapRecord<String, Object, Object> dlqRecord = MapRecord.create(
