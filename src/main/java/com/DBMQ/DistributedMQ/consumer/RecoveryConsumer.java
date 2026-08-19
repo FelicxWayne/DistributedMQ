@@ -3,6 +3,7 @@ package com.DBMQ.DistributedMQ.consumer;
 import com.DBMQ.DistributedMQ.constants.StreamConstants;
 import com.DBMQ.DistributedMQ.model.OrderEvent;
 import com.DBMQ.DistributedMQ.service.AckService;
+import com.DBMQ.DistributedMQ.service.IdempotencyService;
 import org.springframework.data.redis.connection.stream.MapRecord;
 import org.springframework.data.redis.connection.stream.RecordId;
 import org.springframework.stereotype.Component;
@@ -16,9 +17,9 @@ public class RecoveryConsumer extends ConsumerBase {
 
     private final Map<String, ConsumerBase> consumers;
 
-    public RecoveryConsumer(AckService ackService, List<ConsumerBase> consumerList) {
+    public RecoveryConsumer(AckService ackService, IdempotencyService idempotencyService, List<ConsumerBase> consumerList) {
         // Registers with a placeholder/recovery group name; it won't read from Redis directly
-        super(StreamConstants.ORDER_PLACED, "recovery-group", ackService);
+        super(StreamConstants.ORDER_PLACED, "recovery-group", ackService, idempotencyService);
         this.consumers = consumerList.stream()
                 .filter(c -> c != this)
                 .collect(Collectors.toMap(ConsumerBase::getConsumerGroupName, c -> c));
