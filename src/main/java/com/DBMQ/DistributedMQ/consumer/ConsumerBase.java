@@ -8,6 +8,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.data.redis.connection.stream.MapRecord;
 import org.springframework.data.redis.connection.stream.RecordId;
 import org.springframework.data.redis.stream.StreamListener;
+import org.springframework.dao.DataIntegrityViolationException;
 
 public abstract class ConsumerBase implements StreamListener<String, MapRecord<String, Object, Object>> {
 
@@ -42,7 +43,16 @@ public abstract class ConsumerBase implements StreamListener<String, MapRecord<S
             process(event, record.getId());
             
             // Record message as successfully processed
-            idempotencyService.markMessageAsProcessed(messageId, consumerGroupName);
+            try {
+                idempotencyService.markMessageAsProcessed(messageId, consumerGroupName);
+            } catch (DataIntegrityViolationException e) {
+                // A unique constraint violation indicates another consumer instance in this group saved the record first.
+                // The business logic has already executed in this thread, but we handle the duplicate record insertion gracefully
+                // and acknowledge the message in Redis to clear it from the PEL.
+                log.warn("Unique constraint violation for message {} in group {}. A duplicate record insertion was prevented (duplicate processing occurred). Acknowledging Redis message to clean up.", messageId, consumerGroupName);
+                ackService.acknowledge(streamName, consumerGroupName, record.getId());
+                return;
+            }
             
             // Acknowledge the message upon successful processing
             ackService.acknowledge(streamName, consumerGroupName, record.getId());
