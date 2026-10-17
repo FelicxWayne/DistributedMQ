@@ -3,7 +3,6 @@ package com.DBMQ.DistributedMQ.initializer;
 import com.DBMQ.DistributedMQ.constants.StreamConstants;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
-import org.springframework.dao.DataAccessException;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.connection.stream.ReadOffset;
 import org.springframework.data.redis.core.RedisTemplate;
